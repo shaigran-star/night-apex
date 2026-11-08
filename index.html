@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07131d">
+  <title>Night Apex — 3D Racing</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f5f8fb;
+      --muted: #a9bac7;
+      --cyan: #8de8f3;
+      --panel: rgba(8, 19, 28, .82);
+      --line: rgba(191, 226, 237, .2);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #07131d;
+      color: var(--ink);
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+    }
+
+    body { display: grid; place-items: center; }
+
+    #game {
+      position: relative;
+      width: min(100vw, 1440px);
+      height: min(100vh, 900px);
+      overflow: hidden;
+      background: #112b37;
+      box-shadow: 0 20px 90px #000b;
+    }
+
+    canvas { display: block; width: 100%; height: 100%; }
+
+    .hud {
+      position: absolute;
+      z-index: 2;
+      inset: 0;
+      padding: clamp(12px, 2.5vw, 28px);
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .topline {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand, .readout, .progress-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 8px 30px #0003;
+      backdrop-filter: blur(10px);
+    }
+
+    .brand {
+      padding: 11px 15px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .19em;
+    }
+
+    .brand span { color: var(--cyan); }
+
+    .readouts {
+      display: flex;
+      gap: 9px;
+    }
+
+    .readout {
+      min-width: 104px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .readout small, .progress-card small {
+      display: block;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+
+    .readout strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 22px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .bottomline {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .progress-card {
+      width: min(370px, 53vw);
+      padding: 13px 15px;
+      border-radius: 12px;
+    }
+
+    .progress-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 9px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .progress-label span:last-child { color: var(--cyan); }
+
+    .meter {
+      height: 5px;
+      overflow: hidden;
+      border-radius: 5px;
+      background: #ffffff26;
+    }
+
+    #progressFill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #59d9dd, #d0fbdf);
+      transition: width .15s linear;
+    }
+
+    .controls {
+      padding: 10px 13px;
+      border-radius: 10px;
+      background: var(--panel);
+      color: #e7f1f5;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      line-height: 1.8;
+      text-align: right;
+    }
+
+    kbd {
+      padding: 2px 5px;
+      border: 1px solid #ffffff42;
+      border-radius: 4px;
+      background: #ffffff12;
+      font: inherit;
+    }
+
+    #overlay {
+      position: absolute;
+      z-index: 3;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: linear-gradient(90deg, #030b10b5, #07131d70, #030b10a8);
+      transition: opacity .2s ease;
+    }
+
+    #overlay.hidden { visibility: hidden; opacity: 0; pointer-events: none; }
+
+    .panel {
+      width: min(520px, 100%);
+      padding: clamp(24px, 5vw, 44px);
+      border: 1px solid #c2e6ec45;
+      border-radius: 20px;
+      background: linear-gradient(145deg, #0b1c27f2, #08131ced);
+      box-shadow: 0 24px 90px #0008;
+      text-align: center;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--cyan);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .25em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(40px, 8vw, 70px);
+      font-weight: 950;
+      letter-spacing: -.065em;
+      line-height: .98;
+      text-transform: uppercase;
+    }
+
+    h1 span { color: var(--cyan); }
+
+    .description {
+      max-width: 360px;
+      margin: 18px auto 0;
+      color: #b3c4cd;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .race-info {
+      display: flex;
+      justify-content: center;
+      gap: 9px;
+      margin-top: 20px;
+    }
+
+    .race-info span {
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: #d9e7eb;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+
+    button {
+      min-width: 210px;
+      margin-top: 26px;
+      padding: 14px 22px;
+      border: 0;
+      border-radius: 9px;
+      background: linear-gradient(120deg, #94eff1, #c8f5d7);
+      color: #102129;
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 950;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      transition: transform .15s, filter .15s;
+    }
+
+    button:hover { filter: brightness(1.08); transform: translateY(-2px); }
+    button:focus-visible { outline: 3px solid white; outline-offset: 4px; }
+
+    #countdown {
+      position: absolute;
+      z-index: 2;
+      top: 43%;
+      left: 50%;
+      color: white;
+      font-size: clamp(64px, 14vw, 150px);
+      font-weight: 1000;
+      letter-spacing: -.06em;
+      text-shadow: 0 8px 40px #000b;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    #countdown:empty { display: none; }
+
+    @media (max-width: 620px) {
+      .readout { min-width: 72px; padding: 9px 8px; }
+      .readout strong { font-size: 18px; }
+      .brand { padding: 10px; font-size: 10px; }
+      .controls { max-width: 155px; font-size: 9px; }
+    }
+  </style>
+</head>
+<body>
+  <main id="game" aria-label="Night Apex 3D racing game">
+    <canvas id="scene" aria-label="A 3D perspective view of the race track"></canvas>
+
+    <section class="hud" aria-label="Race information">
+      <div class="topline">
+        <div class="brand">NIGHT <span>APEX</span></div>
+        <div class="readouts">
+          <div class="readout"><small>Speed</small><strong><span id="speed">0</span><small style="display:inline;font-size:9px"> km/h</small></strong></div>
+          <div class="readout"><small>Position</small><strong id="position">1 / 6</strong></div>
+          <div class="readout"><small>Lap</small><strong id="lap">1 / 3</strong></div>
+        </div>
+      </div>
+      <div class="bottomline">
+        <div class="progress-card">
+          <div class="progress-label"><span>Race <span id="raceNumber">01</span> · <span id="raceTime">00:00</span></span><span id="difficulty">ROOKIE</span></div>
+          <div class="meter"><div id="progressFill"></div></div>
+        </div>
+        <div class="controls">
+          <kbd>W</kbd> / <kbd>↑</kbd> ACCELERATE &nbsp; <kbd>S</kbd> BRAKE<br>
+          <kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd> STEER
+        </div>
+      </div>
+    </section>
+
+    <div id="countdown" aria-live="assertive"></div>
+    <div id="overlay">
+      <section class="panel" aria-live="polite">
+        <p class="eyebrow" id="eyebrow">Single player · 6 cars · 3 laps</p>
+        <h1 id="title">Night<br><span>Apex</span></h1>
+        <p class="description" id="description">Take the wheel, find your racing line, and beat five rivals to the finish. Every race brings a faster field.</p>
+        <div class="race-info" id="raceInfo"><span>W / ↑ accelerate</span><span>A / D steer</span><span>S / ↓ brake</span></div>
+        <button id="startButton" type="button">Start race</button>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const canvas = document.getElementById('scene');
+      const ctx = canvas.getContext('2d');
+      const overlay = document.getElementById('overlay');
+      const startButton = document.getElementById('startButton');
+      const countdown = document.getElementById('countdown');
+      const ui = {
+        speed: document.getElementById('speed'),
+        position: document.getElementById('position'),
+        lap: document.getElementById('lap'),
+        raceNumber: document.getElementById('raceNumber'),
+        raceTime: document.getElementById('raceTime'),
+        difficulty: document.getElementById('difficulty'),
+        progress: document.getElementById('progressFill'),
+        eyebrow: document.getElementById('eyebrow'),
+        title: document.getElementById('title'),
+        description: document.getElementById('description'),
+        raceInfo: document.getElementById('raceInfo')
+      };
+
+      const W = 1280;
+      const H = 720;
+      const horizon = 183;
+      const lapLength = 1400;
+      const laps = 3;
+      const totalDistance = lapLength * laps;
+      const viewDistance = 1900;
+      const colors = ['#f2674e', '#f2c94c', '#a98bfa', '#52d2ad', '#e8edf1'];
+      const keys = { up: false, down: false, left: false, right: false };
+      const player = { progress: 0, lane: 0, speed: 0, crossedAt: null };
+      const state = {
+        phase: 'menu',
+        elapsed: 0,
+        countdown: 3.6,
+        raceNumber: 1,
+        hasPlayed: false,
+        place: 1,
+        opponents: []
+      };
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const scale = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(rect.width * scale);
+        canvas.height = Math.round(rect.height * scale);
+        ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
+      }
+
+      function clamp(n, min, max) { return Math.min(max, Math.max(min, n)); }
+      function mix(a, b, t) { return a + (b - a) * t; }
+      function ordinal(n) {
+        const suffix = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th');
+        return n + suffix;
+      }
+
+      function curveAt(distance) {
+        return Math.sin(distance * .0017) * 178 + Math.sin(distance * .0039 + .7) * 48;
+      }
+
+      function roadAt(z) {
+        const t = clamp(1 - z / viewDistance, 0, 1);
+        return {
+          t,
+          y: horizon + Math.pow(t, 1.58) * (H - horizon + 20),
+          half: 48 + Math.pow(t, 1.08) * 440,
+          center: W / 2 + curveAt(player.progress + z) - curveAt(player.progress)
+        };
+      }
+
+      function setMenu(kind, message) {
+        const title = ui.title;
+        if (kind === 'result') {
+          const won = message === 'win';
+          ui.eyebrow.textContent = 'Race ' + String(state.raceNumber).padStart(2, '0') + ' complete · ' + ordinal(state.place) + ' place';
+          title.innerHTML = won ? 'You <span>win</span>' : 'Race <span>over</span>';
+          ui.description.textContent = won
+            ? 'First place! The next grid has quicker rivals. Get ready to race again.'
+            : 'The rivals reached the finish first. Take another shot and claim the lead.';
+          ui.raceInfo.innerHTML = '<span>' + Math.round(player.progress / totalDistance * 100) + '% race distance</span><span>' + Math.floor(state.elapsed / 60) + ':' + String(Math.floor(state.elapsed % 60)).padStart(2, '0') + ' race time</span>';
+          startButton.textContent = 'Next race';
+        } else {
+          ui.eyebrow.textContent = 'Single player · 6 cars · 3 laps';
+          title.innerHTML = 'Night<br><span>Apex</span>';
+          ui.description.textContent = 'Take the wheel, find your racing line, and beat five rivals to the finish. Every race brings a faster field.';
+          ui.raceInfo.innerHTML = '<span>W / ↑ accelerate</span><span>A / D steer</span><span>S / ↓ brake</span>';
+          startButton.textContent = 'Start race';
+        }
+        overlay.classList.remove('hidden');
+      }
+
+      function makeOpponents() {
+        return colors.map((color, i) => ({
+          name: 'Rival ' + (i + 1),
+          color,
+          progress: i * 2,
+          lane: [-.55, .3, .68, -.15, -.78][i],
+          speed: 0,
+          pace: 157 + i * 3.5 + Math.min(state.raceNumber - 1, 12) * 3.2,
+          crossedAt: null,
+          phase: i * 1.73
+        }));
+      }
+
+      function startRace() {
+        if (state.phase === 'result') state.raceNumber++;
+        state.phase = 'countdown';
+        state.elapsed = 0;
+        state.countdown = 3.6;
+        state.place = 1;
+        player.progress = 0;
+        player.lane = 0;
+        player.speed = 0;
+        player.crossedAt = null;
+        state.opponents = makeOpponents();
+        state.hasPlayed = true;
+        countdown.textContent = '3';
+        overlay.classList.add('hidden');
+        updateHud();
+      }
+
+      function finishRace(won) {
+        state.phase = 'result';
+        player.speed = 0;
+        countdown.textContent = '';
+        setMenu('result', won ? 'win' : 'lose');
+      }
+
+      function updateHud() {
+        const progress = clamp(player.progress / totalDistance, 0, 1);
+        const currentLap = Math.min(laps, Math.floor(player.progress / lapLength) + 1);
+        ui.speed.textContent = String(Math.round(player.speed));
+        ui.position.textContent = state.place + ' / 6';
+        ui.lap.textContent = currentLap + ' / ' + laps;
+        ui.raceNumber.textContent = String(state.raceNumber).padStart(2, '0');
+        ui.raceTime.textContent = Math.floor(state.elapsed / 60) + ':' + String(Math.floor(state.elapsed % 60)).padStart(2, '0');
+        ui.difficulty.textContent = state.raceNumber < 3 ? 'ROOKIE' : state.raceNumber < 6 ? 'CLUB' : state.raceNumber < 10 ? 'PRO' : 'ELITE';
+        ui.progress.style.width = (progress * 100).toFixed(1) + '%';
+      }
+
+      function advance(car, dt, speed) {
+        const before = car.progress;
+        car.progress = Math.min(totalDistance, car.progress + speed * dt / 3.6);
+        if (before < totalDistance && car.progress >= totalDistance) {
+          car.crossedAt = (totalDistance - before) / Math.max(car.progress - before, .0001);
+        }
+      }
+
+      function updateRace(dt) {
+        const steer = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+        if (keys.up) player.speed += 112 * dt;
+        else player.speed -= 13 * dt;
+        if (keys.down) player.speed -= 225 * dt;
+        player.speed = clamp(player.speed, 0, 238);
+
+        player.lane = clamp(player.lane + steer * (0.75 + player.speed / 190) * dt, -1.18, 1.18);
+        if (Math.abs(player.lane) > .86) player.speed = Math.max(55, player.speed - 74 * dt);
+        advance(player, dt, player.speed);
+
+        for (const car of state.opponents) {
+          const target = car.pace + Math.sin(state.elapsed * .72 + car.phase) * 5.5;
+          car.speed += (target - car.speed) * Math.min(1, dt * 1.25);
+          car.lane = clamp(Math.sin(state.elapsed * .31 + car.phase) * .48 + Math.sin(state.elapsed * .83 + car.phase) * .12, -.78, .78);
+          advance(car, dt, car.speed);
+        }
+
+        const standings = [player, ...state.opponents].slice().sort((a, b) => b.progress - a.progress);
+        state.place = standings.indexOf(player) + 1;
+        const crossing = [player, ...state.opponents]
+          .filter(car => car.crossedAt !== null)
+          .sort((a, b) => a.crossedAt - b.crossedAt)[0];
+        if (crossing) {
+          state.place = crossing === player ? 1 : 2 + state.opponents.filter(car => car !== crossing && car.crossedAt !== null && car.crossedAt < crossing.crossedAt).length;
+          finishRace(crossing === player);
+        }
+      }
+
+      function update(dt) {
+        if (state.phase === 'countdown') {
+          state.countdown -= dt;
+          countdown.textContent = state.countdown > 2.6 ? '3' : state.countdown > 1.6 ? '2' : state.countdown > .6 ? '1' : 'GO';
+          if (state.countdown <= 0) {
+            countdown.textContent = '';
+            state.phase = 'running';
+          }
+          return;
+        }
+        if (state.phase !== 'running') return;
+        state.elapsed += dt;
+        updateRace(dt);
+        updateHud();
+      }
+
+      function polygon(points, fill, stroke, lineWidth = 1) {
+        ctx.beginPath();
+        ctx.moveTo(points[0][0], points[0][1]);
+        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
+        ctx.closePath();
+        if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+        if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lineWidth; ctx.stroke(); }
+      }
+
+      function drawSky() {
+        const sky = ctx.createLinearGradient(0, 0, 0, H);
+        sky.addColorStop(0, '#172d41');
+        sky.addColorStop(.32, '#52717a');
+        sky.addColorStop(.55, '#d39b70');
+        sky.addColorStop(.57, '#73806a');
+        sky.addColorStop(1, '#334e40');
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, W, H);
+
+        const sun = ctx.createRadialGradient(930, 143, 9, 930, 143, 145);
+        sun.addColorStop(0, '#ffe7b1cc');
+        sun.addColorStop(.2, '#ffd9a877');
+        sun.addColorStop(1, '#ffd9a800');
+        ctx.fillStyle = sun;
+        ctx.fillRect(770, 0, 320, 300);
+
+        polygon([[0, horizon + 40], [95, 119], [178, 163], [290, 94], [390, 166], [510, 128], [623, 177], [764, 92], [880, 166], [1000, 112], [1144, 164], [1280, 105], [1280, 300], [0, 300]], '#354a4d');
+        polygon([[0, horizon + 54], [150, 151], [260, 184], [410, 130], [530, 191], [676, 142], [818, 189], [982, 138], [1108, 181], [1280, 139], [1280, 325], [0, 325]], '#536052');
+        ctx.fillStyle = 'rgba(241,195,146,.32)';
+        ctx.fillRect(0, horizon + 1, W, 2);
+      }
+
+      function drawTree(x, y, size, shade) {
+        const trunk = Math.max(2, size * .12);
+        ctx.fillStyle = '#392f28';
+        ctx.fillRect(x - trunk / 2, y - size * .28, trunk, size * .3);
+        polygon([[x, y - size], [x - size * .37, y - size * .34], [x + size * .37, y - size * .34]], shade);
+        polygon([[x, y - size * .73], [x - size * .45, y - size * .16], [x + size * .45, y - size * .16]], '#28463a');
+        ctx.fillStyle = '#ffffff15';
+        ctx.fillRect(x - size * .04, y - size * .75, size * .08, size * .35);
+      }
+
+      function drawScenery() {
+        const first = Math.floor(player.progress / 112) * 112;
+        for (let d = first + 112; d < player.progress + viewDistance; d += 112) {
+          const z = d - player.progress;
+          const p = roadAt(z);
+          const seed = Math.floor(d / 112);
+          for (const side of [-1, 1]) {
+            if ((seed + (side > 0 ? 1 : 0)) % 3 === 0) continue;
+            const depthSize = .18 + p.t * .94;
+            const x = p.center + side * (p.half + 65 + (seed % 4) * 21) * (0.32 + p.t * .68);
+            drawTree(x, p.y + 5, 27 * depthSize, seed % 2 ? '#355c49' : '#41644b');
+          }
+        }
+      }
+
+      function roadPoint(z) {
+        const p = roadAt(z);
+        return { left: p.center - p.half, right: p.center + p.half, y: p.y, center: p.center, half: p.half, t: p.t };
+      }
+
+      function drawFinishLine(z) {
+        const p = roadAt(z);
+        const x1 = p.center - p.half;
+        const x2 = p.center + p.half;
+        const tile = Math.max(3, p.half * .07);
+        const rows = Math.max(1, Math.round(tile * .42));
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < 14; col++) {
+            ctx.fillStyle = (row + col) % 2 ? '#f6f4e9' : '#17212a';
+            const left = mix(x1, x2, col / 14);
+            const right = mix(x1, x2, (col + 1) / 14);
+            const y = p.y + row * 2;
+            ctx.fillRect(left, y, right - left, 2);
+          }
+        }
+      }
+
+      function drawRoad() {
+        const step = 24;
+        for (let z = viewDistance; z >= 0; z -= step) {
+          const far = roadPoint(z);
+          const near = roadPoint(Math.max(0, z - step));
+          const band = Math.floor((player.progress + z) / 72) % 2 === 0;
+          const shoulderFar = far.half + Math.max(3, far.half * .11);
+          const shoulderNear = near.half + Math.max(3, near.half * .11);
+
+          polygon([[far.center - shoulderFar, far.y], [far.center + shoulderFar, far.y], [near.center + shoulderNear, near.y], [near.center - shoulderNear, near.y]], band ? '#e6e2cc' : '#ba5946');
+          polygon([[far.left, far.y], [far.right, far.y], [near.right, near.y], [near.left, near.y]], band ? '#34393d' : '#30363a');
+
+          const edgeFar = Math.max(2, far.half * .012);
+          const edgeNear = Math.max(2, near.half * .012);
+          polygon([[far.left, far.y], [far.left + edgeFar, far.y], [near.left + edgeNear, near.y], [near.left, near.y]], '#eee5cc');
+          polygon([[far.right - edgeFar, far.y], [far.right, far.y], [near.right, near.y], [near.right - edgeNear, near.y]], '#eee5cc');
+
+          if (band) {
+            for (const fraction of [-1 / 3, 1 / 3]) {
+              const dashWidthFar = Math.max(1, far.half * .012);
+              const dashWidthNear = Math.max(1, near.half * .012);
+              const xf = far.center + far.half * fraction;
+              const xn = near.center + near.half * fraction;
+              polygon([[xf - dashWidthFar, far.y], [xf + dashWidthFar, far.y], [xn + dashWidthNear, near.y], [xn - dashWidthNear, near.y]], '#e4ded0');
+            }
+          }
+        }
+
+        let finishDistance = lapLength - (player.progress % lapLength);
+        if (finishDistance < 12) finishDistance = lapLength;
+        if (finishDistance < viewDistance) drawFinishLine(finishDistance);
+      }
+
+      function drawCar(x, y, scale, color, isPlayer) {
+        const w = (isPlayer ? 81 : 54) * scale;
+        const h = (isPlayer ? 130 : 86) * scale;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(w / 81, h / 130);
+        ctx.shadowColor = isPlayer ? '#8de8f380' : '#0009';
+        ctx.shadowBlur = isPlayer ? 23 : 10;
+        ctx.fillStyle = '#111820';
+        ctx.beginPath();
+        ctx.ellipse(0, -4, 46, 67, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.fillStyle = '#11161a';
+        ctx.fillRect(-37, -94, 13, 36);
+        ctx.fillRect(24, -94, 13, 36);
+        ctx.fillRect(-39, -42, 14, 38);
+        ctx.fillRect(25, -42, 14, 38);
+
+        polygon([[-27, -126], [27, -126], [35, -95], [40, -58], [39, -18], [29, -2], [19, 4], [-19, 4], [-29, -2], [-39, -18], [-40, -58], [-35, -95]], color);
+        polygon([[-24, -105], [24, -105], [29, -81], [26, -60], [-26, -60], [-29, -81]], '#192e39');
+        polygon([[-24, -103], [0, -99], [0, -63], [-26, -63], [-29, -81]], '#72909a');
+        polygon([[1, -99], [24, -103], [29, -81], [26, -63], [1, -63]], '#405963');
+        ctx.fillStyle = '#f7f0ce';
+        ctx.fillRect(-29, -17, 17, 8);
+        ctx.fillRect(12, -17, 17, 8);
+        ctx.fillStyle = '#e64d42';
+        ctx.fillRect(-25, -122, 13, 5);
+        ctx.fillRect(12, -122, 13, 5);
+        ctx.fillStyle = '#19232a';
+        ctx.fillRect(-30, -51, 60, 4);
+        if (isPlayer) {
+          ctx.fillStyle = '#e8fbff';
+          ctx.fillRect(-3, -48, 6, 34);
+        }
+        ctx.restore();
+      }
+
+      function drawOpponents() {
+        const visible = state.opponents
+          .map(car => ({ car, z: car.progress - player.progress }))
+          .filter(entry => entry.z > 18 && entry.z < viewDistance)
+          .sort((a, b) => b.z - a.z);
+        for (const { car, z } of visible) {
+          const p = roadAt(z);
+          const relativeLane = car.lane - player.lane * p.t;
+          const x = p.center + relativeLane * p.half * .72;
+          const scale = .2 + p.t * .88;
+          drawCar(x, p.y + 13 * scale, scale, car.color, false);
+        }
+      }
+
+      function drawPlayer() {
+        const p = roadAt(0);
+        const x = p.center + player.lane * p.half * .72;
+        const sway = state.phase === 'running' ? Math.sin(state.elapsed * 9) * Math.min(player.speed / 100, 1) : 0;
+        drawCar(x + sway, 705, 1.03, '#63cbd7', true);
+      }
+
+      function drawScene() {
+        drawSky();
+        drawScenery();
+        drawRoad();
+        drawOpponents();
+        drawPlayer();
+        const shade = ctx.createLinearGradient(0, 0, 0, H);
+        shade.addColorStop(0, '#06121a15');
+        shade.addColorStop(.65, '#07141b00');
+        shade.addColorStop(1, '#02090c75');
+        ctx.fillStyle = shade;
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      function frame(ts) {
+        const dt = Math.min((ts - (frame.last || ts)) / 1000, .04);
+        frame.last = ts;
+        update(dt);
+        drawScene();
+        requestAnimationFrame(frame);
+      }
+
+      function setKey(event, value) {
+        const code = event.code;
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(code)) event.preventDefault();
+        if (code === 'KeyW' || code === 'ArrowUp') keys.up = value;
+        if (code === 'KeyS' || code === 'ArrowDown') keys.down = value;
+        if (code === 'KeyA' || code === 'ArrowLeft') keys.left = value;
+        if (code === 'KeyD' || code === 'ArrowRight') keys.right = value;
+        if (value && code === 'Space' && (state.phase === 'menu' || state.phase === 'result')) startRace();
+      }
+
+      window.addEventListener('keydown', event => setKey(event, true));
+      window.addEventListener('keyup', event => setKey(event, false));
+      window.addEventListener('blur', () => {
+        keys.up = keys.down = keys.left = keys.right = false;
+      });
+      window.addEventListener('resize', resize);
+      startButton.addEventListener('click', startRace);
+
+      resize();
+      updateHud();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
